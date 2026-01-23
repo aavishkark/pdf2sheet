@@ -6,6 +6,9 @@ import dotenv from 'dotenv';
 
 import authRoutes from './routes/auth.js';
 import vendorRoutes from './routes/vendors.js';
+import processRoutes from './routes/process.js';
+import emailRoutes from './routes/email.js';
+import invoiceRoutes from './routes/invoices.js';
 
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
@@ -37,6 +40,9 @@ app.get('/health', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/vendors', vendorRoutes);
+app.use('/api/process', processRoutes);
+app.use('/api/email', emailRoutes);
+app.use('/api/invoices', invoiceRoutes);
 
 app.use(notFound);
 

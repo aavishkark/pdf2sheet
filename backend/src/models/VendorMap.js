@@ -14,8 +14,12 @@ const fieldMappingSchema = new mongoose.Schema({
     },
     extractionRule: {
         type: String,
-        required: true
+        required: false
     },
+    keywords: [{
+        type: String,
+        trim: true
+    }],
     required: {
         type: Boolean,
         default: false
