@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 
 import authRoutes from './routes/auth.js';
+import vendorRoutes from './routes/vendors.js';
 
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
@@ -35,6 +36,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/vendors', vendorRoutes);
 
 app.use(notFound);
 
