@@ -9,6 +9,7 @@ import vendorRoutes from './routes/vendors.js';
 import processRoutes from './routes/process.js';
 import emailRoutes from './routes/email.js';
 import invoiceRoutes from './routes/invoices.js';
+import sheetsRoutes from './routes/sheets.js';
 
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
@@ -43,6 +44,7 @@ app.use('/api/vendors', vendorRoutes);
 app.use('/api/process', processRoutes);
 app.use('/api/email', emailRoutes);
 app.use('/api/invoices', invoiceRoutes);
+app.use('/api/sheets', sheetsRoutes);
 
 app.use(notFound);
 

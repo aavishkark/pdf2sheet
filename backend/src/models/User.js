@@ -72,8 +72,18 @@ const userSchema = new mongoose.Schema({
             default: 85,
             min: 0,
             max: 100
+        },
+        spreadsheetId: {
+            type: String
         }
-    }
+    },
+    googleTokens: {
+        access_token: String,
+        refresh_token: String,
+        scope: String,
+        token_type: String,
+        expiry_date: Number
+    },
 }, {
     timestamps: true
 });
