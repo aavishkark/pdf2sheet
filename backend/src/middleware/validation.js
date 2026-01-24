@@ -57,11 +57,13 @@ export const validate = (schema) => {
             stripUnknown: true
         });
 
+
         if (error) {
             const errors = error.details.map(detail => ({
                 field: detail.path[0],
                 message: detail.message
             }));
+            console.log('Validation failed:', errors);
 
             return res.status(400).json({
                 success: false,

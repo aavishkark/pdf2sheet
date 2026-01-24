@@ -13,6 +13,7 @@ const generateToken = (userId) => {
 export const register = async (req, res, next) => {
     try {
         const { email, password, firstName, lastName } = req.body;
+        console.log('Registration attempt:', { email, firstName, lastName, hasPassword: !!password });
 
         const existingUser = await User.findOne({ email });
         if (existingUser) {
@@ -44,6 +45,7 @@ export const register = async (req, res, next) => {
             token
         });
     } catch (error) {
+        console.log('Registration error:', error);
         next(error);
     }
 };
