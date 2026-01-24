@@ -2,17 +2,29 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import GoogleAuthCallback from './pages/auth/GoogleAuthCallback';
+import RequireAuth from './components/auth/RequireAuth';
+import MainLayout from './components/layout/MainLayout';
+import Dashboard from './pages/dashboard/Dashboard';
+import Vendors from './pages/vendors/Vendors';
+import Settings from './pages/settings/Settings';
 
 function App() {
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen">
       <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/auth/google/callback" element={<GoogleAuthCallback />} />
         <Route path="/auth/success" element={<GoogleAuthCallback />} />
-        <Route path="/dashboard" element={<div className="p-10 text-center"><h1 className="text-2xl">Dashboard (Phase 2)</h1></div>} />
+
+        <Route element={<RequireAuth />}>
+          <Route element={<MainLayout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/vendors" element={<Vendors />} />
+            <Route path="/settings" element={<Settings />} />
+          </Route>
+        </Route>
       </Routes>
     </div>
   );
