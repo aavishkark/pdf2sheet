@@ -91,8 +91,24 @@ export const calculateConfidence = (results, mappings) => {
         }
     }
 
+    // If no fields are explicitly marked required, consider ALL fields required
+    if (totalFields === 0 && keys.length > 0) {
+        for (let i = 0; i < keys.length; i++) {
+            let mapping = mappings[keys[i]];
+            // Skip invalid mappings
+            if (!mapping || Array.isArray(mapping) || (!mapping.extractionRule && (!mapping.keywords || mapping.keywords.length === 0))) {
+                continue;
+            }
+
+            totalFields++;
+            if (results[keys[i]]) {
+                foundFields++;
+            }
+        }
+    }
+
     if (totalFields === 0) {
-        return 100;
+        return 0; // If there are no fields to map, confidence is 0, not 100
     }
 
     let score = (foundFields / totalFields) * 100;
