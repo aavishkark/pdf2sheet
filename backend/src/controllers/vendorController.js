@@ -3,20 +3,15 @@ import VendorMap from '../models/VendorMap.js';
 export const createVendor = async (req, res, next) => {
     try {
         const { vendorName, senderEmail, fieldMappings, extractionRules } = req.body;
+        console.log('Creating Vendor - Body:', JSON.stringify(req.body, null, 2));
         const userId = req.user.userId;
 
-        const existingVendor = await VendorMap.findOne({ userId, senderEmail });
-        if (existingVendor) {
-            return res.status(400).json({
-                success: false,
-                error: 'Vendor mapping for this email already exists'
-            });
-        }
+        const sanitizedSenderEmail = (senderEmail && senderEmail.trim() !== "") ? senderEmail.trim() : undefined;
 
         const vendorMap = await VendorMap.create({
             userId,
             vendorName,
-            senderEmail,
+            senderEmail: sanitizedSenderEmail,
             fieldMappings,
             extractionRules
         });

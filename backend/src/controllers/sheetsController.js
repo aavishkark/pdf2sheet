@@ -49,3 +49,17 @@ export const updateSpreadsheetId = async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 };
+
+export const disconnectSheets = async (req, res) => {
+    try {
+        await User.findByIdAndUpdate(req.user.userId, {
+            googleTokens: {},
+            'settings.spreadsheetId': null,
+            googleSheetId: null
+        });
+
+        res.json({ success: true, message: 'Disconnected from Google Sheets' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};

@@ -12,7 +12,7 @@ const invoiceSchema = new mongoose.Schema({
     },
     senderEmail: {
         type: String,
-        required: true,
+        required: false,
         lowercase: true,
         trim: true
     },

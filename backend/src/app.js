@@ -10,6 +10,7 @@ import processRoutes from './routes/process.js';
 import emailRoutes from './routes/email.js';
 import invoiceRoutes from './routes/invoices.js';
 import sheetsRoutes from './routes/sheets.js';
+import userRoutes from './routes/user.js';
 
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
@@ -45,6 +46,7 @@ app.use('/api/process', processRoutes);
 app.use('/api/email', emailRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/sheets', sheetsRoutes);
+app.use('/api/user', userRoutes);
 
 app.use(notFound);
 

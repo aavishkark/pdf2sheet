@@ -7,7 +7,7 @@ const fieldMappingSchema = new mongoose.Schema({
     },
     sheetColumn: {
         type: String,
-        required: true,
+        required: false,
         uppercase: true,
         trim: true,
         match: [/^[A-Z]+$/, 'Column must be letters (e.g., A, B, AA)']
@@ -40,10 +40,8 @@ const vendorMapSchema = new mongoose.Schema({
     },
     senderEmail: {
         type: String,
-        required: [true, 'Sender email is required'],
         trim: true,
-        lowercase: true,
-        match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email']
+        lowercase: true
     },
     senderDomain: {
         type: String,
@@ -89,10 +87,8 @@ const vendorMapSchema = new mongoose.Schema({
     timestamps: true
 });
 
-vendorMapSchema.index({ userId: 1, senderEmail: 1 }, { unique: true });
-
 vendorMapSchema.pre('save', async function () {
-    if (this.isModified('senderEmail')) {
+    if (this.isModified('senderEmail') && this.senderEmail) {
         const parts = this.senderEmail.split('@');
         if (parts.length === 2) {
             this.senderDomain = parts[1];
