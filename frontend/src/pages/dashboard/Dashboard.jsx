@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import useInvoices from '../../hooks/useInvoices';
 import toast, { Toaster } from 'react-hot-toast';
 import ReviewInvoiceModal from '../../components/invoices/ReviewInvoiceModal';
+import api from '../../services/api';
 
 export default function Dashboard() {
-    const { data: invoices, isLoading, error, refetch } = useInvoices(); // Add refetch
+    const { data: invoices, isLoading, error, refetch } = useInvoices();
     const [selectedInvoice, setSelectedInvoice] = useState(null);
     const [isReviewOpen, setIsReviewOpen] = useState(false);
 
@@ -40,17 +41,17 @@ export default function Dashboard() {
         });
     };
 
+
+
     const handleUpdateInvoice = async (id, updates) => {
-        const token = localStorage.getItem('token');
-        await fetch(`http://localhost:5000/api/invoices/${id}`, {
-            method: 'PUT',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(updates)
-        });
-        refetch(); // Reload data
+        try {
+            await api.put(`/invoices/${id}`, updates);
+            toast.success('Invoice updated successfully');
+            refetch();
+        } catch (error) {
+            console.error('Failed to update invoice:', error);
+            toast.error('Failed to update invoice');
+        }
     };
 
     const handleReviewClick = (invoice) => {
