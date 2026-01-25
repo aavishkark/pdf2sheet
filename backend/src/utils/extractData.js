@@ -1,61 +1,69 @@
-export const extractData = (text, mappings) => {
+/**
+ * Extracts data from text based on VendorMap rules.
+ * @param {string} text
+ * @param {Array} extractionRules
+ */
+export const extractData = (text, extractionRules) => {
     let results = {};
-    let fullText = text;
+    const fullText = text || '';
 
-    let keys = Object.keys(mappings);
+    if (!Array.isArray(extractionRules)) {
+        console.warn("extractData expected array, got:", typeof extractionRules);
+        return results;
+    }
 
-    for (let i = 0; i < keys.length; i++) {
-        let key = keys[i];
-        let mapping = mappings[keys[i]];
-
-        if (!mapping || Array.isArray(mapping) || (!mapping.extractionRule && (!mapping.keywords || mapping.keywords.length === 0))) {
-            continue;
-        }
-
-        let rule = mapping.extractionRule;
+    for (const rule of extractionRules) {
+        const key = rule.targetField;
+        let matchedValue = null;
 
         try {
-            let matchedValue = null;
-
-            if (rule) {
-                let regex = new RegExp(rule, 'i');
-                let match = fullText.match(regex);
+            if (rule.method === 'regex' && rule.regexPattern) {
+                const regex = new RegExp(rule.regexPattern, 'i');
+                const match = fullText.match(regex);
                 if (match) {
                     matchedValue = match[1] || match[0];
                 }
             }
 
-            if (!matchedValue && mapping.keywords && mapping.keywords.length > 0) {
-                let lines = fullText.split('\n');
+            else if (rule.method === 'keyword_proximity' && rule.keyword) {
+                const keyword = rule.keyword;
+                const lines = fullText.split('\n');
 
-                for (let keyword of mapping.keywords) {
-                    let line = lines.find(l => l.toLowerCase().includes(keyword.toLowerCase()));
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    if (line.toLowerCase().includes(keyword.toLowerCase())) {
+                        const searchLower = rule.searchDirection === 'below';
 
-                    if (line) {
-                        let parts = line.split(new RegExp(keyword, 'i'));
-                        if (parts.length > 1) {
-                            let potentialValue = parts[1].trim();
-                            potentialValue = potentialValue.replace(/^[:\-\s]+/, '').trim();
-
-                            if (potentialValue) {
-                                matchedValue = potentialValue;
-                                break;
+                        if (searchLower) {
+                            if (i + 1 < lines.length) {
+                                matchedValue = lines[i + 1].trim();
+                            }
+                        } else {
+                            const parts = line.split(new RegExp(keyword, 'i'));
+                            if (parts.length > 1) {
+                                matchedValue = parts[1].trim();
                             }
                         }
+
+                        if (matchedValue) break;
                     }
                 }
             }
 
             if (matchedValue) {
+                if (rule.removePattern) {
+                    matchedValue = matchedValue.replace(new RegExp(rule.removePattern, 'g'), '');
+                }
+
                 matchedValue = matchedValue.trim();
 
-                if (key.toLowerCase().includes('date')) {
-                    let d = new Date(matchedValue);
+                if (key === 'invoiceDate' || key === 'dueDate') {
+                    const d = new Date(matchedValue);
                     if (!isNaN(d.getTime())) {
                         matchedValue = d.toISOString().split('T')[0];
                     }
-                } else if (key.toLowerCase().includes('amount') || key.toLowerCase().includes('price')) {
-                    matchedValue = matchedValue.replace(/[$,]/g, '');
+                } else if (key === 'totalAmount') {
+                    matchedValue = matchedValue.replace(/[^0-9.]/g, '');
                 }
 
                 results[key] = matchedValue;
@@ -64,53 +72,26 @@ export const extractData = (text, mappings) => {
             }
 
         } catch (err) {
+            console.error(`Error extraction field ${key}:`, err);
             results[key] = null;
         }
     }
 
     return results;
-}
+};
 
-export const calculateConfidence = (results, mappings) => {
-    let totalFields = 0;
+export const calculateConfidence = (results, extractionRules) => {
+    if (!results || !extractionRules || extractionRules.length === 0) return 0;
+
+    let totalFields = extractionRules.length;
     let foundFields = 0;
 
-    let keys = Object.keys(mappings);
-
-    for (let i = 0; i < keys.length; i++) {
-        let mapping = mappings[keys[i]];
-        if (!mapping || Array.isArray(mapping) || (!mapping.extractionRule && (!mapping.keywords || mapping.keywords.length === 0))) {
-            continue;
-        }
-
-        if (mapping.required) {
-            totalFields = totalFields + 1;
-            if (results[keys[i]]) {
-                foundFields = foundFields + 1;
-            }
+    for (const rule of extractionRules) {
+        if (results[rule.targetField]) {
+            foundFields++;
         }
     }
 
-    // If no fields are explicitly marked required, consider ALL fields required
-    if (totalFields === 0 && keys.length > 0) {
-        for (let i = 0; i < keys.length; i++) {
-            let mapping = mappings[keys[i]];
-            // Skip invalid mappings
-            if (!mapping || Array.isArray(mapping) || (!mapping.extractionRule && (!mapping.keywords || mapping.keywords.length === 0))) {
-                continue;
-            }
-
-            totalFields++;
-            if (results[keys[i]]) {
-                foundFields++;
-            }
-        }
-    }
-
-    if (totalFields === 0) {
-        return 0; // If there are no fields to map, confidence is 0, not 100
-    }
-
-    let score = (foundFields / totalFields) * 100;
-    return Math.round(score);
-}
+    if (totalFields === 0) return 0;
+    return Math.round((foundFields / totalFields) * 100);
+};

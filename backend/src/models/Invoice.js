@@ -16,6 +16,10 @@ const invoiceSchema = new mongoose.Schema({
         lowercase: true,
         trim: true
     },
+    vendorName: {
+        type: String,
+        required: false
+    },
     status: {
         type: String,
         enum: ['pending', 'processed', 'failed', 'review_needed'],
@@ -25,6 +29,7 @@ const invoiceSchema = new mongoose.Schema({
         invoiceNumber: String,
         invoiceDate: String,
         totalAmount: String,
+        dueDate: String,
         lineItems: []
     },
     confidenceScore: {
@@ -32,6 +37,7 @@ const invoiceSchema = new mongoose.Schema({
         default: 0
     },
     originalFileName: String,
+    filePath: String,
     processedAt: Date
 }, {
     timestamps: true

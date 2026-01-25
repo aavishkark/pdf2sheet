@@ -6,6 +6,17 @@ import { readPdfBuffer } from '../utils/pdfHelper.js';
 import { extractData, calculateConfidence } from '../utils/extractData.js';
 import Invoice from '../models/Invoice.js';
 import { appendToSheet } from '../services/sheetsService.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const UPLOADS_DIR = path.join(__dirname, '../../uploads');
+
+if (!fs.existsSync(UPLOADS_DIR)) {
+    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -52,6 +63,13 @@ router.post('/test-upload', authenticateToken, upload.single('invoice'), async (
                 extractedData: {}
             });
 
+            const fileName = `${reviewInvoice._id}.pdf`;
+            const filePath = path.join(UPLOADS_DIR, fileName);
+            fs.writeFileSync(filePath, pdfBuffer);
+
+            reviewInvoice.filePath = fileName;
+            await reviewInvoice.save();
+
             console.log(`[NOTIFICATION] Sending "New Vendor Detected" email to user: ${req.user.email}`);
 
             return res.status(201).json({
@@ -66,8 +84,8 @@ router.post('/test-upload', authenticateToken, upload.single('invoice'), async (
         }
 
         const pdfText = await readPdfBuffer(pdfBuffer);
-        const extractedData = extractData(pdfText, vendor.fieldMappings);
-        const confidence = calculateConfidence(extractedData, vendor.fieldMappings);
+        const extractedData = extractData(pdfText, vendor.extractionRules);
+        const confidence = calculateConfidence(extractedData, vendor.extractionRules);
 
         const invoice = await Invoice.create({
             userId: req.user.userId,
@@ -80,6 +98,13 @@ router.post('/test-upload', authenticateToken, upload.single('invoice'), async (
             originalFileName: req.file.originalname,
             processedAt: new Date()
         });
+
+        const fileName = `${invoice._id}.pdf`;
+        const filePath = path.join(UPLOADS_DIR, fileName);
+        fs.writeFileSync(filePath, pdfBuffer);
+
+        invoice.filePath = fileName;
+        await invoice.save();
 
         if (invoice.status === 'processed') {
             try {
