@@ -106,7 +106,7 @@ export default function GoogleSheetsSection({ user }) {
                             </button>
                         ) : (
                             <button
-                                onClick={handleConnectGoogleSheets}
+                                onClick={handleConnect}
                                 className="px-6 py-3 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white font-semibold rounded-xl shadow-lg transform transition hover:scale-105 flex items-center gap-2"
                             >
                                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">

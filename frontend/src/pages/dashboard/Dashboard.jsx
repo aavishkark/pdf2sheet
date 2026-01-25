@@ -3,9 +3,14 @@ import useInvoices from '../../hooks/useInvoices';
 import toast, { Toaster } from 'react-hot-toast';
 import ReviewInvoiceModal from '../../components/invoices/ReviewInvoiceModal';
 import api from '../../services/api';
+import SimulateEmail from '../../components/DevTools/SimulateEmail';
+import ConfirmationModal from '../../components/common/ConfirmationModal';
+
+import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
     const { data: invoices, isLoading, error, refetch } = useInvoices();
+    const navigate = useNavigate();
     const [selectedInvoice, setSelectedInvoice] = useState(null);
     const [isReviewOpen, setIsReviewOpen] = useState(false);
 
@@ -43,6 +48,29 @@ export default function Dashboard() {
 
 
 
+    const [deleteId, setDeleteId] = useState(null);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+    const handleDeleteClick = (id) => {
+        setDeleteId(id);
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteId) return;
+
+        try {
+            await api.delete(`/invoices/${deleteId}`);
+            toast.success('Invoice deleted');
+            refetch();
+            setIsDeleteModalOpen(false);
+            setDeleteId(null);
+        } catch (error) {
+            console.error('Delete failed:', error);
+            toast.error('Failed to delete invoice');
+        }
+    };
+
     const handleUpdateInvoice = async (id, updates) => {
         try {
             await api.put(`/invoices/${id}`, updates);
@@ -55,8 +83,7 @@ export default function Dashboard() {
     };
 
     const handleReviewClick = (invoice) => {
-        setSelectedInvoice(invoice);
-        setIsReviewOpen(true);
+        navigate(`/review/${invoice._id}`);
     };
 
     const getStatusBadge = (invoice) => {
@@ -88,6 +115,8 @@ export default function Dashboard() {
                     Here's what's happening with your invoices
                 </p>
             </div>
+
+            <SimulateEmail onUploadSuccess={refetch} darkMode={darkMode} />
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} p-6 rounded-2xl shadow-lg transition-colors duration-300`}>
@@ -133,14 +162,15 @@ export default function Dashboard() {
                 ) : invoices && invoices.length > 0 ? (
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className={darkMode ? 'bg-gray-900' : 'bg-gray-50'}>
+                            <thead className={darkMode ? 'bg-gray-900 border-b border-gray-700' : 'bg-gray-50 border-b border-gray-200'}>
                                 <tr>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Vendor</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Invoice #</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Date</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Amount</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Confidence</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+                                    <th className={`px-6 py-4 text-left text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Vendor</th>
+                                    <th className={`px-6 py-4 text-left text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Invoice #</th>
+                                    <th className={`px-6 py-4 text-left text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Date</th>
+                                    <th className={`px-6 py-4 text-left text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Amount</th>
+                                    <th className={`px-6 py-4 text-left text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Confidence</th>
+                                    <th className={`px-6 py-4 text-left text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Status</th>
+                                    <th className={`px-6 py-4 text-center text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Actions</th>
                                 </tr>
                             </thead>
                             <tbody className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
@@ -166,6 +196,28 @@ export default function Dashboard() {
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             {getStatusBadge(invoice)}
                                         </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                            <div className="flex items-center justify-center space-x-3">
+                                                <button
+                                                    onClick={() => handleReviewClick(invoice)}
+                                                    className="text-blue-500 hover:text-blue-700 transition"
+                                                    title="Edit / Review"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteClick(invoice._id)}
+                                                    className="text-red-500 hover:text-red-700 transition"
+                                                    title="Delete"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -177,6 +229,16 @@ export default function Dashboard() {
                     </div>
                 )}
             </div>
+
+            <ConfirmationModal
+                isOpen={isDeleteModalOpen}
+                title="Delete Invoice"
+                message="Are you sure you want to delete this invoice? This action cannot be undone."
+                onConfirm={confirmDelete}
+                onCancel={() => setIsDeleteModalOpen(false)}
+                confirmText="Delete"
+                isDanger={true}
+            />
 
             <ReviewInvoiceModal
                 isOpen={isReviewOpen}
