@@ -2,7 +2,7 @@ import User from '../models/User.js';
 
 export const getUserProfile = async (req, res, next) => {
     try {
-        const user = await User.findById(req.user.userId).select('-password');
+        const user = await User.findById(req.user.userId).select('-password +googleAccessToken');
 
         if (!user) {
             return res.status(404).json({
@@ -11,7 +11,7 @@ export const getUserProfile = async (req, res, next) => {
             });
         }
 
-        const hasGoogleTokens = !!(user.googleTokens && user.googleTokens.access_token);
+        const hasGoogleConnection = !!user.googleAccessToken;
 
         res.status(200).json({
             success: true,
@@ -20,9 +20,9 @@ export const getUserProfile = async (req, res, next) => {
                 firstName: user.firstName,
                 lastName: user.lastName,
                 email: user.email,
-                hasGoogleConnection: hasGoogleTokens,
-                googleEmail: user.googleTokens?.email || null,
-                spreadsheetId: user.settings?.spreadsheetId || null
+                hasGoogleConnection,
+                googleEmail: user.googleEmail || null,
+                spreadsheetId: user.googleSheetId || null
             }
         });
     } catch (error) {
@@ -32,12 +32,17 @@ export const getUserProfile = async (req, res, next) => {
 
 export const updateUserSettings = async (req, res, next) => {
     try {
-        const { spreadsheetId } = req.body;
+        let { spreadsheetId } = req.body;
+
+        const urlMatch = spreadsheetId.match(/\/d\/([a-zA-Z0-9-_]+)/);
+        if (urlMatch && urlMatch[1]) {
+            spreadsheetId = urlMatch[1];
+        }
 
         const user = await User.findByIdAndUpdate(
             req.user.userId,
             {
-                'settings.spreadsheetId': spreadsheetId
+                googleSheetId: spreadsheetId
             },
             {
                 new: true,
@@ -48,7 +53,7 @@ export const updateUserSettings = async (req, res, next) => {
         res.status(200).json({
             success: true,
             data: {
-                spreadsheetId: user.settings.spreadsheetId
+                spreadsheetId: user.googleSheetId
             }
         });
     } catch (error) {

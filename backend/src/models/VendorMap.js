@@ -1,100 +1,67 @@
 import mongoose from 'mongoose';
 
-const fieldMappingSchema = new mongoose.Schema({
-    pdfFieldName: {
+const extractionRuleSchema = new mongoose.Schema({
+    targetField: {
         type: String,
-        trim: true
+        required: true,
+        enum: ['invoiceDate', 'invoiceNumber', 'totalAmount', 'vendorName', 'dueDate']
     },
-    sheetColumn: {
+    method: {
         type: String,
-        required: false,
-        uppercase: true,
-        trim: true,
-        match: [/^[A-Z]+$/, 'Column must be letters (e.g., A, B, AA)']
+        required: true,
+        enum: ['regex', 'coordinate', 'keyword_proximity']
     },
-    extractionRule: {
-        type: String,
-        required: false
+    removePattern: { type: String },
+    regexPattern: { type: String },
+    coordinates: {
+        x: Number,
+        y: Number,
+        w: Number,
+        h: Number,
+        page: { type: Number, default: 1 }
     },
-    keywords: [{
+
+    keyword: { type: String },
+    searchDirection: {
         type: String,
-        trim: true
-    }],
-    required: {
-        type: Boolean,
-        default: false
+        enum: ['right', 'below', 'auto'],
+        default: 'right'
     }
-}, { _id: false });
+});
 
 const vendorMapSchema = new mongoose.Schema({
-    userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true,
-        index: true
-    },
     vendorName: {
         type: String,
-        required: [true, 'Vendor name is required'],
+        required: true,
         trim: true
     },
     senderEmail: {
         type: String,
+        lowercase: true,
         trim: true,
-        lowercase: true
+        index: true
     },
-    senderDomain: {
+    domain: {
         type: String,
-        trim: true,
-        lowercase: true
+        lowercase: true,
+        trim: true
     },
-    fieldMappings: {
-        invoiceNumber: fieldMappingSchema,
-        invoiceDate: fieldMappingSchema,
-        totalAmount: fieldMappingSchema,
-        vendorName: fieldMappingSchema,
-        lineItems: [fieldMappingSchema]
+    layoutSignature: {
+        type: String,
     },
-    extractionRules: {
-        dateFormat: {
-            type: String,
-            default: 'MM/DD/YYYY'
-        },
-        currencySymbol: {
-            type: String,
-            default: '$'
-        }
-    },
-    confidence: {
-        lastScore: {
-            type: Number,
-            default: 0
-        },
-        successRate: {
-            type: Number,
-            default: 100
-        },
-        totalProcessed: {
-            type: Number,
-            default: 0
-        }
-    },
-    version: {
+    extractionRules: [extractionRuleSchema],
+    confidenceThreshold: {
         type: Number,
-        default: 1
+        default: 80
+    },
+    active: {
+        type: Boolean,
+        default: true
     }
 }, {
     timestamps: true
 });
 
-vendorMapSchema.pre('save', async function () {
-    if (this.isModified('senderEmail') && this.senderEmail) {
-        const parts = this.senderEmail.split('@');
-        if (parts.length === 2) {
-            this.senderDomain = parts[1];
-        }
-    }
-});
 
 const VendorMap = mongoose.model('VendorMap', vendorMapSchema);
 

@@ -38,7 +38,9 @@ router.get('/callback', async (req, res) => {
         if (state) {
             console.log('Updating user tokens for userId:', state);
             const userUpdate = await User.findByIdAndUpdate(state, {
-                googleTokens: { ...tokens, email: userInfo.data.email },
+                googleAccessToken: tokens.access_token,
+                googleRefreshToken: tokens.refresh_token,
+                googleEmail: userInfo.data.email,
                 'settings.hasGoogleConnection': true
             }, { new: true });
             console.log('User update validation:', userUpdate ? 'Success' : 'User invalid');

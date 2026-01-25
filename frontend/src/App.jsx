@@ -8,6 +8,8 @@ import Dashboard from './pages/dashboard/Dashboard';
 import Vendors from './pages/vendors/Vendors';
 import Settings from './pages/settings/Settings';
 
+import VisualMapper from './components/Review/VisualMapper';
+
 function App() {
   return (
     <div className="min-h-screen">
@@ -23,6 +25,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/vendors" element={<Vendors />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/review/:invoiceId" element={<VisualMapper />} />
           </Route>
         </Route>
       </Routes>

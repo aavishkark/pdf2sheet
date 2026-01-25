@@ -27,39 +27,45 @@ export const oauthCallback = async (req, res) => {
         const { tokens } = await oauth2Client.getToken(code);
 
         await User.findByIdAndUpdate(userId, {
-            googleTokens: tokens
+            googleAccessToken: tokens.access_token,
+            googleRefreshToken: tokens.refresh_token,
+            'settings.hasGoogleConnection': true
         });
 
         res.json({ success: true, message: 'Google Sheets connected successfully' });
     } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        console.error('OAuth Callback Error:', error);
+        res.status(500).json({ success: false, error: 'Failed to connect Google Sheets' });
     }
 };
 
 export const updateSpreadsheetId = async (req, res) => {
     try {
         const { spreadsheetId } = req.body;
+        const user = await User.findById(req.user.userId);
 
-        await User.findByIdAndUpdate(req.user.userId, {
-            'settings.spreadsheetId': spreadsheetId
-        });
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        user.googleSheetId = spreadsheetId;
+        await user.save();
 
         res.json({ success: true, message: 'Spreadsheet ID updated' });
     } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        console.error(error);
+        res.status(500).json({ error: 'Failed to update spreadsheet ID' });
     }
 };
 
 export const disconnectSheets = async (req, res) => {
     try {
-        await User.findByIdAndUpdate(req.user.userId, {
-            googleTokens: {},
-            'settings.spreadsheetId': null,
-            googleSheetId: null
-        });
-
-        res.json({ success: true, message: 'Disconnected from Google Sheets' });
+        const user = await User.findById(req.user.userId);
+        user.googleAccessToken = null;
+        user.googleRefreshToken = null;
+        user.googleSheetId = null;
+        user.settings.hasGoogleConnection = false;
+        await user.save();
+        res.json({ success: true, message: 'Disconnected' });
     } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ error: 'Failed to disconnect' });
     }
 };
