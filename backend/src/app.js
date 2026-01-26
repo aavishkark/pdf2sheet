@@ -23,6 +23,8 @@ app.use(helmet());
 const allowedOrigins = [
     'http://localhost:5173',
     'http://localhost:5174',
+    'https://pdf2sheet.vercel.app',
+    'https://pdf2sheet-z3ll.onrender.com',
     process.env.FRONTEND_URL
 ].filter(Boolean);
 

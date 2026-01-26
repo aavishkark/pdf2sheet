@@ -61,7 +61,7 @@ export const updateInvoice = async (req, res) => {
                 ];
 
                 await appendToSheet(req.user.userId, rowData);
-                console.log(`[Review] Manually approved invoice ${id} added to sheet.`);
+                await addToSheet(req.user.userId, invoice);
             } catch (sheetError) {
                 console.error('Failed to sync manually approved invoice:', sheetError);
             }
@@ -85,23 +85,23 @@ export const getInvoicePdf = async (req, res) => {
             return res.status(404).json({ success: false, error: 'PDF not found' });
         }
 
-        console.log(`[PDF Serve] DB Record Found. FilePath: ${invoice.filePath}`);
-
-        if (!invoice.filePath) {
-            console.log('[PDF Serve] No filePath in invoice record');
-            return res.status(404).json({ success: false, error: 'PDF not found' });
+        if (invoice.pdfData) {
+            console.log(`[PDF Serve] Serving from Database Buffer. Size: ${invoice.pdfData.length} bytes`);
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Length', invoice.pdfData.length);
+            return res.send(invoice.pdfData);
         }
 
-        const filePath = path.join(UPLOADS_DIR, invoice.filePath);
-        console.log(`[PDF Serve] Checking absolute path: ${filePath}`);
-
-        if (!fs.existsSync(filePath)) {
-            console.log('[PDF Serve] File does not exist on disk');
-            return res.status(404).json({ success: false, error: 'File on disk not found' });
+        if (invoice.filePath) {
+            const filePath = path.join(UPLOADS_DIR, invoice.filePath);
+            if (fs.existsSync(filePath)) {
+                console.log('[PDF Serve] Serving from Disk (Legacy)');
+                res.setHeader('Content-Type', 'application/pdf');
+                return res.sendFile(filePath);
+            }
         }
 
-        res.setHeader('Content-Type', 'application/pdf');
-        res.sendFile(filePath);
+        return res.status(404).json({ success: false, error: 'PDF File not found' });
 
     } catch (error) {
         console.error('Error serving PDF:', error);
@@ -112,9 +112,14 @@ export const getInvoicePdf = async (req, res) => {
 const formatDateToDDMMYYYY = (dateStr) => {
     if (!dateStr) return '';
 
-    let date = new Date(dateStr);
+    const cleanStr = String(dateStr).replace(/Date[:\s]*/i, '').trim();
+    let date = new Date(cleanStr);
 
     if (isNaN(date.getTime())) {
+        const parts = cleanStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+        if (parts) {
+            return `${String(parts[1]).padStart(2, '0')}-${String(parts[2]).padStart(2, '0')}-${parts[3]}`;
+        }
         return dateStr;
     }
 
@@ -122,7 +127,7 @@ const formatDateToDDMMYYYY = (dateStr) => {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
 
-    return `${day}/${month}/${year}`;
+    return `${day}-${month}-${year}`;
 };
 
 export const processAndLearn = async (req, res) => {
@@ -146,17 +151,96 @@ export const processAndLearn = async (req, res) => {
 
         await invoice.save();
 
-        if (invoice.senderEmail && vendorName) {
-            const existingMap = await VendorMap.findOne({ senderEmail: invoice.senderEmail });
-            if (!existingMap) {
-                await VendorMap.create({
-                    vendorName: vendorName,
-                    senderEmail: invoice.senderEmail,
-                    extractionRules: []
-                });
-                console.log(`[Learn] New VendorMap created for ${vendorName} (${invoice.senderEmail})`);
+        if (invoice.pdfData && extractedData) {
+            try {
+                const { extractTextWithCoordinates, normalizeDate, findCoordinates } = await import('../services/extractionService.js');
+                const { textItems } = await extractTextWithCoordinates(invoice.pdfData);
+
+                const normalize = (str) => String(str || '').toLowerCase().trim();
+                const safeEmail = normalize(invoice.senderEmail);
+                const safeVendorName = normalize(vendorName);
+
+                console.log(`[DEBUG-LOOKUP] Starting Vendor Resolution...`);
+                console.log(`[DEBUG-LOOKUP] UserID: ${userId}`);
+                console.log(`[DEBUG-LOOKUP] Email Target: "${safeEmail}" (Original: "${invoice.senderEmail}")`);
+                console.log(`[DEBUG-LOOKUP] Name Target: "${safeVendorName}"`);
+
+                let vendorMap = null;
+
+                if (safeEmail) {
+                    vendorMap = await VendorMap.findOne({ senderEmail: safeEmail, userId });
+                    console.log(`[DEBUG-LOOKUP] Search by Email Result:`, vendorMap ? `FOUND (${vendorMap._id})` : 'NOT FOUND');
+                }
+
+                if (!vendorMap && safeVendorName) {
+                    console.log(`[Learning] Vendor not found by email (${safeEmail}). Searching by name: "${safeVendorName}"`);
+                    vendorMap = await VendorMap.findOne({
+                        userId,
+                        vendorName: { $regex: new RegExp(`^${safeVendorName}$`, 'i') }
+                    });
+                    console.log(`[DEBUG-LOOKUP] Search by Name Result:`, vendorMap ? `FOUND (${vendorMap._id})` : 'NOT FOUND');
+
+                    if (vendorMap) {
+
+                        if (invoice.senderEmail && vendorMap.senderEmail !== invoice.senderEmail) {
+                            const oldEmail = vendorMap.senderEmail;
+                            vendorMap.senderEmail = invoice.senderEmail;
+                            await vendorMap.save();
+                        }
+                    } else {
+                        // console.log(`[Learning] Vendor "${vendorName}" NOT found by name either.`);
+                    }
+                }
+
+                if (!vendorMap && vendorName) {
+                    vendorMap = new VendorMap({
+                        userId,
+                        vendorName,
+                        senderEmail: invoice.senderEmail,
+                        extractionRules: []
+                    });
+                }
+
+                if (vendorMap) {
+                    for (const [key, value] of Object.entries(extractedData)) {
+                        if (!value) continue;
+
+                        const matchBox = findCoordinates(textItems, value, key);
+
+                        if (matchBox) {
+                            console.log(`[Learning] Learned Rule '${key}' @ [${matchBox.x}, ${matchBox.y}]`);
+                            const ruleIndex = vendorMap.extractionRules.findIndex(r => r.targetField === key);
+                            const newRule = {
+                                targetField: key,
+                                method: 'coordinate',
+                                coordinates: {
+                                    x: matchBox.x,
+                                    y: matchBox.y,
+                                    width: matchBox.width,
+                                    height: matchBox.height,
+                                    pageIndex: matchBox.pageIndex
+                                },
+                                confidence: 0.95
+                            };
+
+                            if (ruleIndex >= 0) {
+                                vendorMap.extractionRules[ruleIndex] = newRule;
+                            } else {
+                                vendorMap.extractionRules.push(newRule);
+                            }
+                        } else {
+                            console.log(`[Learning] Could not find coordinates for '${key}': "${value}" in PDF text.`);
+                        }
+                    }
+                    await vendorMap.save();
+                    console.log(`[Learning] Updated rules for ${vendorName}`);
+                }
+            } catch (learnErr) {
+                console.error('[Learning] Failed to learn coordinates:', learnErr);
             }
         }
+
+
 
         try {
             const rowData = [
@@ -188,18 +272,19 @@ export const processAndLearn = async (req, res) => {
 export const deleteInvoice = async (req, res) => {
     try {
         const { id } = req.params;
+        console.log(`[Delete Debug] Attempting to delete Invoice ID: ${id} for User ID: ${req.user.userId}`);
         const invoice = await Invoice.findOne({ _id: id, userId: req.user.userId });
 
         if (!invoice) return res.status(404).json({ success: false, error: 'Invoice not found' });
 
         if (invoice.filePath) {
-            const filePath = path.resolve(invoice.filePath);
             try {
+                const filePath = path.resolve(path.join(UPLOADS_DIR, invoice.filePath));
                 if (fs.existsSync(filePath)) {
                     fs.unlinkSync(filePath);
                 }
             } catch (fsErr) {
-                console.error('Failed to delete file:', fsErr);
+                console.error('Failed to delete legacy file:', fsErr);
             }
         }
 

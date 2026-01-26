@@ -1,5 +1,4 @@
-import { readPdfBuffer } from '../utils/pdfHelper.js';
-import { extractData, calculateConfidence } from '../utils/extractData.js';
+import { extractData, calculateConfidence } from '../services/extractionService.js';
 import VendorMap from '../models/VendorMap.js';
 
 export const processPdf = async (req, res) => {
@@ -11,24 +10,31 @@ export const processPdf = async (req, res) => {
     }
 
     try {
-        let text = await readPdfBuffer(req.file.buffer);
+        const { results: extracted, fullText: text } = await extractData(req.file.buffer, []);
 
         if (req.body.vendorId) {
             let vendor = await VendorMap.findById(req.body.vendorId).lean();
 
             if (vendor) {
-                let mappings = vendor.fieldMappings;
-                let extracted = extractData(text, mappings);
-                let confidence = calculateConfidence(extracted, mappings);
+                const { results: vendorExtracted } = await extractData(req.file.buffer, vendor.extractionRules || []);
+                let confidence = calculateConfidence(vendorExtracted, vendor.extractionRules || []);
 
                 return res.json({
                     success: true,
                     text: text,
-                    data: extracted,
+                    data: vendorExtracted,
                     confidence: confidence
                 });
             }
         }
+
+        let confidence = calculateConfidence(extracted, []);
+        res.json({
+            success: true,
+            text: text,
+            data: extracted,
+            confidence: confidence
+        });
 
         res.json({
             success: true,

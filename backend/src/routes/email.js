@@ -2,8 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import { authenticateToken } from '../middleware/auth.js';
 import VendorMap from '../models/VendorMap.js';
-import { readPdfBuffer } from '../utils/pdfHelper.js';
-import { extractData, calculateConfidence } from '../utils/extractData.js';
+import { extractData, calculateConfidence } from '../services/extractionService.js';
 import Invoice from '../models/Invoice.js';
 import { appendToSheet } from '../services/sheetsService.js';
 import fs from 'fs';
@@ -24,13 +23,14 @@ const upload = multer({ storage: multer.memoryStorage() });
 router.post('/test-upload', authenticateToken, upload.single('invoice'), async (req, res, next) => {
     try {
         const { vendorEmail, vendorName } = req.body;
-        const pdfBuffer = req.file?.buffer;
+        const pdfBuffer = req.file.buffer;
+
+        console.log(`[Version 2.0] Processing Upload. Email: '${vendorEmail}', Name: '${vendorName}'`);
+
+        console.log(`[Upload] File received: ${req.file.originalname}, Size: ${req.file.size}, Buffer: ${req.file.buffer ? 'Present' : 'MISSING'}`);
 
         if (!pdfBuffer) {
-            return res.status(400).json({
-                success: false,
-                error: 'Please upload a PDF file'
-            });
+            return res.status(400).json({ success: false, error: 'File buffer missing. Multer config?' });
         }
 
         if (!vendorEmail && !vendorName) {
@@ -41,10 +41,17 @@ router.post('/test-upload', authenticateToken, upload.single('invoice'), async (
         }
 
         let query = { userId: req.user.userId };
+        const conditions = [];
+
         if (vendorEmail) {
-            query.senderEmail = vendorEmail;
-        } else {
-            query.vendorName = { $regex: new RegExp(`^${vendorName.trim()}$`, 'i') };
+            conditions.push({ senderEmail: vendorEmail.trim().toLowerCase() });
+        }
+        if (vendorName) {
+            conditions.push({ vendorName: { $regex: new RegExp(`^${vendorName.trim()}$`, 'i') } });
+        }
+
+        if (conditions.length > 0) {
+            query.$or = conditions;
         }
 
         console.log('Searching for vendor with query:', query);
@@ -53,24 +60,40 @@ router.post('/test-upload', authenticateToken, upload.single('invoice'), async (
         if (!vendor) {
             console.log('Vendor not found. Creating "Review Needed" invoice.');
 
+            let guessedVendorName = null;
+            let heuristicData = {};
+
+            try {
+                const { results, fullText } = await extractData(pdfBuffer, []);
+                heuristicData = results;
+                console.log('Heuristic Extraction Result:', JSON.stringify(heuristicData, null, 2));
+
+                const allVendors = await VendorMap.find({ userId: req.user.userId }).select('vendorName');
+                for (const v of allVendors) {
+                    if (fullText && fullText.toLowerCase().includes(v.vendorName.toLowerCase())) {
+                        console.log(`[Heuristic] Found potential vendor match in text: "${v.vendorName}"`);
+                        guessedVendorName = v.vendorName;
+                        break;
+                    }
+                }
+            } catch (err) {
+                console.error('Heuristic extraction failed:', err);
+            }
+
             const reviewInvoice = await Invoice.create({
                 userId: req.user.userId,
+                vendorName: guessedVendorName || undefined,
                 senderEmail: vendorEmail,
                 status: 'review_needed',
                 originalFileName: req.file ? req.file.originalname : 'unknown_file.pdf',
                 confidenceScore: 0,
                 processedAt: new Date(),
-                extractedData: {}
+                extractedData: heuristicData,
+                pdfData: pdfBuffer,
+                contentType: 'application/pdf'
             });
 
-            const fileName = `${reviewInvoice._id}.pdf`;
-            const filePath = path.join(UPLOADS_DIR, fileName);
-            fs.writeFileSync(filePath, pdfBuffer);
-
-            reviewInvoice.filePath = fileName;
-            await reviewInvoice.save();
-
-            console.log(`[NOTIFICATION] Sending "New Vendor Detected" email to user: ${req.user.email}`);
+            console.log(`[NOTIFICATION] Sending "New Vendor Detected" email TO USER: ${req.user.email} (Vendor: ${vendorEmail || 'Unknown'})`);
 
             return res.status(201).json({
                 success: true,
@@ -83,8 +106,8 @@ router.post('/test-upload', authenticateToken, upload.single('invoice'), async (
             });
         }
 
-        const pdfText = await readPdfBuffer(pdfBuffer);
-        const extractedData = extractData(pdfText, vendor.extractionRules);
+        const { results: extractedData } = await extractData(pdfBuffer, vendor.extractionRules);
+
         const confidence = calculateConfidence(extractedData, vendor.extractionRules);
 
         const invoice = await Invoice.create({
@@ -96,15 +119,10 @@ router.post('/test-upload', authenticateToken, upload.single('invoice'), async (
             confidenceScore: confidence,
             status: confidence >= 70 ? 'processed' : 'review_needed',
             originalFileName: req.file.originalname,
-            processedAt: new Date()
+            processedAt: new Date(),
+            pdfData: pdfBuffer,
+            contentType: 'application/pdf'
         });
-
-        const fileName = `${invoice._id}.pdf`;
-        const filePath = path.join(UPLOADS_DIR, fileName);
-        fs.writeFileSync(filePath, pdfBuffer);
-
-        invoice.filePath = fileName;
-        await invoice.save();
 
         if (invoice.status === 'processed') {
             try {

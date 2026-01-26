@@ -7,6 +7,7 @@ import MainLayout from './components/layout/MainLayout';
 import Dashboard from './pages/dashboard/Dashboard';
 import Vendors from './pages/vendors/Vendors';
 import Settings from './pages/settings/Settings';
+import SimulatePage from './pages/devtools/SimulatePage';
 
 import VisualMapper from './components/Review/VisualMapper';
 
@@ -25,6 +26,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/vendors" element={<Vendors />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/simulate" element={<SimulatePage />} />
             <Route path="/review/:invoiceId" element={<VisualMapper />} />
           </Route>
         </Route>

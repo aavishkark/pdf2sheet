@@ -18,7 +18,8 @@ export default function Sidebar() {
     const navItems = [
         { path: '/dashboard', label: 'Dashboard' },
         { path: '/vendors', label: 'Vendors' },
-        { path: '/settings', label: 'Settings' }
+        { path: '/settings', label: 'Settings' },
+        { path: '/simulate', label: 'Simulate Inbox' }
     ];
 
     return (

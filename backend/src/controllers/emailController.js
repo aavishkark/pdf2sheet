@@ -1,8 +1,7 @@
 import Invoice from '../models/Invoice.js';
 import VendorMap from '../models/VendorMap.js';
 import User from '../models/User.js';
-import { readPdfBuffer } from '../utils/pdfHelper.js';
-import { extractData, calculateConfidence } from '../utils/extractData.js';
+import { extractData, calculateConfidence } from '../services/extractionService.js';
 
 export const receiveEmailWebhook = async (req, res) => {
     try {
@@ -40,12 +39,10 @@ export const receiveEmailWebhook = async (req, res) => {
 
         let extractedData = {};
         let confidence = 0;
-        let text = await readPdfBuffer(req.file.buffer);
 
-        if (vendor) {
-            extractedData = extractData(text, vendor.fieldMappings);
-            confidence = calculateConfidence(extractedData, vendor.fieldMappings);
-        }
+        const { results } = await extractData(req.file.buffer, vendor ? vendor.extractionRules : []);
+        extractedData = results;
+        confidence = calculateConfidence(extractedData, vendor ? vendor.extractionRules : []);
 
         let status = 'review_needed';
         if (confidence > 80) {

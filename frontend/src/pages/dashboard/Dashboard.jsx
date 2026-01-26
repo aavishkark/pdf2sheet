@@ -3,7 +3,6 @@ import useInvoices from '../../hooks/useInvoices';
 import toast, { Toaster } from 'react-hot-toast';
 import ReviewInvoiceModal from '../../components/invoices/ReviewInvoiceModal';
 import api from '../../services/api';
-import SimulateEmail from '../../components/DevTools/SimulateEmail';
 import ConfirmationModal from '../../components/common/ConfirmationModal';
 
 import { useNavigate } from 'react-router-dom';
@@ -116,7 +115,6 @@ export default function Dashboard() {
                 </p>
             </div>
 
-            <SimulateEmail onUploadSuccess={refetch} darkMode={darkMode} />
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} p-6 rounded-2xl shadow-lg transition-colors duration-300`}>
@@ -167,6 +165,7 @@ export default function Dashboard() {
                                     <th className={`px-6 py-4 text-left text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Vendor</th>
                                     <th className={`px-6 py-4 text-left text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Invoice #</th>
                                     <th className={`px-6 py-4 text-left text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Date</th>
+                                    <th className={`px-6 py-4 text-left text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Due Date</th>
                                     <th className={`px-6 py-4 text-left text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Amount</th>
                                     <th className={`px-6 py-4 text-left text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Confidence</th>
                                     <th className={`px-6 py-4 text-left text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Status</th>
@@ -185,12 +184,15 @@ export default function Dashboard() {
                                         <td className={`px-6 py-4 whitespace-nowrap ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                                             {invoice.extractedData?.invoiceDate || 'N/A'}
                                         </td>
+                                        <td className={`px-6 py-4 whitespace-nowrap ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                            {invoice.extractedData?.dueDate || 'N/A'}
+                                        </td>
                                         <td className={`px-6 py-4 whitespace-nowrap ${darkMode ? 'text-white' : 'text-gray-900'} font-semibold`}>
                                             ${invoice.extractedData?.totalAmount || '0.00'}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                                                {Math.round((invoice.confidenceScore || 0) * 100)}%
+                                                {invoice.confidenceScore || 0}%
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">

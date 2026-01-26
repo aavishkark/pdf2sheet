@@ -37,8 +37,15 @@ const invoiceSchema = new mongoose.Schema({
         default: 0
     },
     originalFileName: String,
-    filePath: String,
-    processedAt: Date
+    processedAt: Date,
+    pdfData: {
+        type: Buffer,
+        required: false
+    },
+    contentType: {
+        type: String,
+        default: 'application/pdf'
+    }
 }, {
     timestamps: true
 });
