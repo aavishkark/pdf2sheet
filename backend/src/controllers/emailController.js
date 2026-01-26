@@ -60,6 +60,23 @@ export const receiveEmailWebhook = async (req, res) => {
             processedAt: new Date()
         });
 
+        if (status === 'processed') {
+            try {
+                const { appendToSheet } = await import('../services/sheetsService.js');
+                const rowData = [
+                    vendor ? vendor.vendorName : (extractedData.vendorName || ''),
+                    extractedData.invoiceNumber || '',
+                    extractedData.invoiceDate || '',
+                    extractedData.totalAmount || '',
+                    extractedData.dueDate || ''
+                ];
+                await appendToSheet(user._id, rowData);
+                console.log(`[Email] Auto-synced invoice ${invoice._id} to sheet.`);
+            } catch (sheetErr) {
+                console.error('[Email] Sheet sync failed:', sheetErr);
+            }
+        }
+
         res.status(200).json({
             success: true,
             message: 'Email processed successfully',

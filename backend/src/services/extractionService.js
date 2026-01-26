@@ -40,7 +40,7 @@ export const normalizeDate = (val) => {
         const y = date.getFullYear();
         const m = String(date.getMonth() + 1).padStart(2, '0');
         const d = String(date.getDate()).padStart(2, '0');
-        return `${d}-${m}-${y}`; // DD-MM-YYYY
+        return `${d}-${m}-${y}`;
     }
 
     return val;
@@ -54,9 +54,20 @@ const cleanExtractedValue = (key, rawValue) => {
         val = val.replace(/Balance\s*Due[:\s]*/gi, '')
             .replace(/Total\s*Amount[:\s]*/gi, '')
             .replace(/Total[:\s]*/gi, '')
-            .replace(/Amount[:\s]*/gi, '')
-            .trim();
-        val = val.replace(/[^0-9.,-]/g, '');
+            .replace(/Amount[:\s]*/gi, ' ');
+
+        const matches = val.match(/[\d,]+\.\d{2}/g);
+
+        if (matches && matches.length > 0) {
+            const best = matches.reduce((prev, curr) => {
+                const pVal = parseFloat(prev.replace(/,/g, ''));
+                const cVal = parseFloat(curr.replace(/,/g, ''));
+                return (cVal > pVal) ? curr : prev;
+            });
+            val = best;
+        } else {
+            val = val.replace(/[^0-9.,-]/g, '');
+        }
     }
 
     if (key === 'invoiceNumber') {
@@ -146,8 +157,6 @@ const assembleLines = (textItems) => {
 export const findCoordinates = (textItems, targetValue, fieldKey = '') => {
     if (!targetValue || !textItems) return null;
 
-    const assembledLines = assembleLines(textItems);
-
     const matchTarget = String(targetValue).trim();
     const isDate = fieldKey.toLowerCase().includes('date');
     const isAmount = fieldKey.toLowerCase().includes('amount') || fieldKey.toLowerCase().includes('total');
@@ -160,10 +169,9 @@ export const findCoordinates = (textItems, targetValue, fieldKey = '') => {
     const isMatch = (str) => {
         const raw = str.trim();
         if (raw === matchTarget) return true;
-        if (raw.includes(matchTarget)) return true;
         if (isDate && normTargetDate) {
             const normRaw = normalizeDate(raw);
-            if (normRaw && normRaw === normTargetDate) return true;
+            if (normRaw === normTargetDate) return true;
         }
         if (isAmount) {
             const cleanRaw = raw.replace(/[^0-9.]/g, '');
@@ -173,10 +181,41 @@ export const findCoordinates = (textItems, targetValue, fieldKey = '') => {
         return false;
     };
 
+    for (const item of textItems) {
+        if (isMatch(item.str)) {
+            return {
+                x: item.x,
+                y: item.y,
+                width: item.width,
+                height: item.height || 1,
+                pageIndex: item.pageIndex
+            };
+        }
+    }
+
+    const assembledLines = assembleLines(textItems);
     for (const line of assembledLines) {
         if (isMatch(line.str)) {
             return {
                 x: line.x, y: line.y, width: line.width, height: line.height, pageIndex: line.pageIndex
+            };
+        }
+
+        const idx = line.str.indexOf(matchTarget);
+        if (idx >= 0) {
+            const totalLen = line.str.length;
+            const targetLen = matchTarget.length;
+            const avgCharWidth = line.width / totalLen;
+
+            const subX = line.x + (idx * avgCharWidth);
+            const subW = targetLen * avgCharWidth;
+
+            return {
+                x: subX,
+                y: line.y,
+                width: subW,
+                height: line.height,
+                pageIndex: line.pageIndex
             };
         }
     }
@@ -230,30 +269,69 @@ export const extractData = async (buffer, rules) => {
         const results = {};
         const activeRules = (rules && rules.length > 0) ? rules : DEFAULT_RULES;
 
-        const lines = assembleLines(textItems);
-
         for (const rule of activeRules) {
             if (results[rule.targetField]) continue;
 
             if (rule.method === 'coordinate' && rule.coordinates) {
                 const { x, y, width, height, pageIndex } = rule.coordinates;
 
-                const match = lines.find(line => {
-                    if (line.pageIndex !== pageIndex) return false;
-                    const noOverlap = (
-                        line.x > x + width ||
-                        line.x + line.width < x ||
-                        line.y > y + height ||
-                        line.y + line.height < y
-                    );
-                    if (noOverlap) return false;
-                    if (Math.abs(line.y - y) > 1.0) return false;
-                    return true;
+                const matches = textItems.filter(item => {
+                    if (item.pageIndex !== pageIndex) return false;
+
+                    const openX = Math.max(x, item.x);
+                    const closeX = Math.min(x + width, item.x + item.width);
+                    const openY = Math.max(y, item.y);
+                    const closeY = Math.min(y + height, item.y + (item.height || 1));
+
+                    if (openX < closeX && openY < closeY) {
+                        const intersectionArea = (closeX - openX) * (closeY - openY);
+                        const itemArea = item.width * (item.height || 1);
+                        return (intersectionArea / itemArea) > 0.3 || (intersectionArea / (width * height)) > 0.5;
+                    }
+                    return false;
                 });
 
-                if (match) {
-                    const cleanVal = cleanExtractedValue(rule.targetField, match.str);
-                    results[rule.targetField] = cleanVal;
+                if (matches.length > 0) {
+                    const insideLines = assembleLines(matches);
+
+                    if (insideLines.length > 0) {
+                        const parts = insideLines.map(l => l.str);
+                        const joinedStr = parts.join(' ');
+
+                        const cleanVal = cleanExtractedValue(rule.targetField, joinedStr);
+                        if (cleanVal) {
+                            results[rule.targetField] = cleanVal;
+                        }
+                    }
+                }
+            }
+
+            else if (rule.method === 'keyword_proximity' && rule.keyword) {
+                const lines = assembleLines(textItems);
+
+                const keyLineIndex = lines.findIndex(l => l.str.toLowerCase().includes(rule.keyword.toLowerCase()));
+
+                if (keyLineIndex >= 0) {
+                    const keyLine = lines[keyLineIndex];
+                    let extractedRaw = '';
+
+                    const cleanLine = keyLine.str.replace(new RegExp(rule.keyword, 'i'), '').trim();
+                    if (cleanLine.replace(/[:\-\s]/g, '').length > 0) {
+                        extractedRaw = cleanLine;
+                    }
+                    else if (lines[keyLineIndex + 1]) {
+                        const nextLine = lines[keyLineIndex + 1];
+                        if (nextLine.pageIndex === keyLine.pageIndex && (nextLine.y - keyLine.y) < 2.0) {
+                            extractedRaw = nextLine.str;
+                        }
+                    }
+
+                    if (extractedRaw) {
+                        const cleanVal = cleanExtractedValue(rule.targetField, extractedRaw);
+                        if (cleanVal) {
+                            results[rule.targetField] = cleanVal;
+                        }
+                    }
                 }
             }
         }

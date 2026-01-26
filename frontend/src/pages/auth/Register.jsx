@@ -91,7 +91,7 @@ export default function Register() {
                                     onChange={handleChange}
                                     required
                                     className={`w-full px-4 py-3 ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-blue-50/50 border-blue-100 text-gray-900 placeholder-gray-400'} border rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent transition`}
-                                    placeholder="John"
+                                    placeholder="first name"
                                 />
                             </div>
                             <div>
@@ -105,7 +105,7 @@ export default function Register() {
                                     onChange={handleChange}
                                     required
                                     className={`w-full px-4 py-3 ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-blue-50/50 border-blue-100 text-gray-900 placeholder-gray-400'} border rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent transition`}
-                                    placeholder="Doe"
+                                    placeholder="last name"
                                 />
                             </div>
                         </div>

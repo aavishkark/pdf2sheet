@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api';
 
 const SimulateEmail = ({ onUploadSuccess, darkMode }) => {
@@ -6,6 +7,7 @@ const SimulateEmail = ({ onUploadSuccess, darkMode }) => {
     const [senderEmail, setSenderEmail] = useState('');
     const [status, setStatus] = useState('idle');
     const [message, setMessage] = useState('');
+    const queryClient = useQueryClient();
 
     const handleFileChange = (e) => {
         setFile(e.target.files[0]);
@@ -31,6 +33,8 @@ const SimulateEmail = ({ onUploadSuccess, darkMode }) => {
 
             setStatus('success');
             setMessage(res.data.message || 'Invoice processed!');
+
+            queryClient.invalidateQueries(['invoices']);
 
             if (onUploadSuccess) onUploadSuccess();
 

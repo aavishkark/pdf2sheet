@@ -127,10 +127,11 @@ router.post('/test-upload', authenticateToken, upload.single('invoice'), async (
         if (invoice.status === 'processed') {
             try {
                 const rowData = [
-                    extractedData.invoiceDate || '',
                     vendor.vendorName || '',
                     extractedData.invoiceNumber || '',
-                    extractedData.totalAmount || ''
+                    extractedData.invoiceDate || '',
+                    extractedData.totalAmount || '',
+                    extractedData.dueDate || ''
                 ];
 
                 await appendToSheet(req.user.userId, rowData);

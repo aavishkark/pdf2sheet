@@ -17,10 +17,12 @@ A powerful, automated invoice extraction platform built with the MERN stack. PDF
 
 ## Feature Highlights
 - **Automated Email Processing** — Ingests invoices directly from email attachments using a dedicated webhook endpoint.
-- **Smart Data Extraction** — `src/utils/extractData.js` utilizes a hybrid approach with Regex and Keyword matching to identify fields.
+- **Smart Extraction Engine Dual-Core** — `src/services/extractionService.js` powers the extraction with two strategies:
+  1.  **Coordinate Learning (Primary):** Learns the exact X,Y coordinates of fields after a user manually corrects an invoice. Subsequent uploads are 100% accurate.
+  2.  **Heuristic Search (Fallback):** For first-time vendors, it uses smart Keyword Proximity (e.g., finding text near "Total:") to guess values.
+- **Self-Healing Data** — Automatically cleans dirty data (e.g., "$1,200" -> "1200", "Inv#123" -> "123") and standardizes dates to `DD-MM-YYYY`.
 - **Google Sheets Integration** — `src/services/sheetsService.js` provides seamless authentication and row appending to user spreadsheets.
-- **Vendor Management** — `src/components/vendors/` allows users to create and manage vendor-specific extraction profiles.
-- **Confidence Scoring** — Automatically calculates a confidence score for extracted data to determine if manual review is needed.
+- **Vendor Management** — `src/models/VendorMap.js` stores learned layouts for each vendor.
 - **Modern UI** — Built with **React** and **TailwindCSS** for a clean, responsive user experience.
 
 ---

@@ -54,10 +54,11 @@ export const updateInvoice = async (req, res) => {
         if (updates.status === 'processed') {
             try {
                 const rowData = [
-                    invoice.extractedData.invoiceDate || '',
                     invoice.vendorName || updates.vendorName || '',
                     invoice.extractedData.invoiceNumber || '',
-                    invoice.extractedData.totalAmount || ''
+                    invoice.extractedData.invoiceDate || '',
+                    invoice.extractedData.totalAmount || '',
+                    invoice.extractedData.dueDate || ''
                 ];
 
                 await appendToSheet(req.user.userId, rowData);
@@ -244,7 +245,7 @@ export const processAndLearn = async (req, res) => {
 
         try {
             const rowData = [
-                invoice.vendorName || '',
+                invoice.vendorName || vendorName || '',
                 invoice.extractedData.invoiceNumber || '',
                 invoice.extractedData.invoiceDate || '',
                 invoice.extractedData.totalAmount || '',

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Document, Page, pdfjs } from 'react-pdf';
+import { useQueryClient } from '@tanstack/react-query'; // Import QueryClient
 import 'react-pdf/dist/Page/TextLayer.css';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import api from '../../services/api';
@@ -14,6 +15,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 const VisualMapper = () => {
     const { invoiceId } = useParams();
     const navigate = useNavigate();
+    const queryClient = useQueryClient(); // Initialize QueryClient
     const [invoice, setInvoice] = useState(null);
     const [loading, setLoading] = useState(true);
     const [numPages, setNumPages] = useState(null);
@@ -153,6 +155,9 @@ const VisualMapper = () => {
                 toast.success('Saved & Synced to Sheets!');
             }
 
+            // Invalidate cache so Dashboard updates
+            queryClient.invalidateQueries(['invoices']);
+
             navigate('/dashboard');
         } catch (error) {
             console.error(error);
@@ -170,7 +175,7 @@ const VisualMapper = () => {
                 className={`w-2/3 h-full relative flex flex-col items-center p-4 overflow-y-auto ${darkMode ? 'bg-gray-700' : 'bg-gray-600'}`}
                 ref={pdfWrapperRef}
                 onMouseUp={handleTextSelection}
-                style={{ cursor: 'text' }}
+                style={{ cursor: selectedField ? 'crosshair' : 'text' }}
             >
                 <div className="mb-4 bg-white rounded shadow p-2 flex gap-4 sticky top-0 z-10 w-fit text-gray-900">
                     <button onClick={() => setScale(s => Math.max(0.5, s - 0.1))} className="px-2 font-bold hover:bg-gray-100 rounded">-</button>

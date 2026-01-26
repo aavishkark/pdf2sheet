@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useVendors } from '../../hooks/useVendors';
 import AddVendorModal from '../../components/vendors/AddVendorModal';
@@ -26,11 +27,6 @@ export default function Vendors() {
         }
     }, [error]);
 
-    const getFieldCount = (vendor) => {
-        if (!vendor.fieldMappings) return 0;
-        return Object.keys(vendor.fieldMappings).filter(key => key !== 'lineItems').length;
-    };
-
     return (
         <div className="max-w-7xl">
             <Toaster position="top-center" />
@@ -41,18 +37,9 @@ export default function Vendors() {
                         Vendors
                     </h1>
                     <p className={darkMode ? 'text-gray-400' : 'text-gray-600'}>
-                        Configure vendor-specific extraction rules
+                        View learned extraction rules and confidence scores
                     </p>
                 </div>
-                <button
-                    onClick={() => setShowAddModal(true)}
-                    className="px-6 py-3 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white font-semibold rounded-xl shadow-lg transform transition hover:scale-105 flex items-center gap-2"
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add Vendor
-                </button>
             </div>
 
             {isLoading ? (
@@ -73,23 +60,21 @@ export default function Vendors() {
                                         {vendor.vendorName}
                                     </h3>
                                     <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                                        {getFieldCount(vendor)} field{getFieldCount(vendor) !== 1 ? 's' : ''} mapped
+                                        {vendor.extractionRules ? vendor.extractionRules.length : 0} fields mapped
                                     </p>
                                 </div>
                             </div>
 
                             <div className="space-y-2 mb-4">
-                                {vendor.fieldMappings && Object.keys(vendor.fieldMappings).filter(key => key !== 'lineItems').slice(0, 3).map((fieldName) => (
-                                    <div key={fieldName} className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'} flex items-center gap-2`}>
-                                        <svg className="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                        </svg>
-                                        {fieldName}
+                                {vendor.extractionRules && vendor.extractionRules.slice(0, 3).map((rule, idx) => (
+                                    <div key={idx} className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'} flex items-center gap-2`}>
+                                        <span className={`w-2 h-2 rounded-full ${rule.method === 'coordinate' ? 'bg-green-500' : 'bg-yellow-500'}`}></span>
+                                        {rule.targetField}
                                     </div>
                                 ))}
-                                {getFieldCount(vendor) > 3 && (
+                                {vendor.extractionRules && vendor.extractionRules.length > 3 && (
                                     <div className={`text-sm ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>
-                                        +{getFieldCount(vendor) - 3} more
+                                        +{vendor.extractionRules.length - 3} more
                                     </div>
                                 )}
                             </div>
@@ -99,9 +84,10 @@ export default function Vendors() {
                                 className={`w-full py-2.5 px-4 ${darkMode ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-900'} font-medium rounded-xl transition flex items-center justify-center gap-2`}
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                 </svg>
-                                Edit Configuration
+                                View Details
                             </button>
                         </div>
                     ))}
@@ -114,20 +100,11 @@ export default function Vendors() {
                         </svg>
                     </div>
                     <h3 className={`text-xl font-semibold ${darkMode ? 'text-white' : 'text-gray-900'} mb-2`}>
-                        No vendors configured yet
+                        No vendors discovered yet
                     </h3>
                     <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-6`}>
-                        Add your first vendor to start configuring extraction rules
+                        Upload an invoice to automatically create a vendor key.
                     </p>
-                    <button
-                        onClick={() => setShowAddModal(true)}
-                        className="px-6 py-3 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white font-semibold rounded-xl shadow-lg transform transition hover:scale-105 inline-flex items-center gap-2"
-                    >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                        Add Your First Vendor
-                    </button>
                 </div>
             )}
 
