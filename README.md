@@ -1,116 +1,81 @@
-# PDF2Sheet
+# PDF2Sheet Auto
 
-A powerful, automated invoice extraction platform built with the MERN stack. PDF2Sheet Auto streamlines the accounts payable process by automatically extracting data from PDF invoices and syncing it directly to Google Sheets.
+**Say goodbye to manual data entry.** 
+PDF2Sheet Auto connects your email inbox directly to Google Sheets, turning PDF invoices into structured data automatically.
 
----
-
-## Overview
-
-`PDF2Sheet Auto` is designed to eliminate manual data entry for businesses. Users can:
-- **Configure Vendors**: Set up extraction rules for different suppliers using regex and keywords.
-- **Process Emails**: Automatically ingest PDF attachments sent via email.
-- **Extract Data**: Intelligently identify and extract key fields like Invoice Number, Date, and Total Amount.
-- **Sync to Sheets**: Push extracted data directly to a connected Google Sheet row.
-- **Visual Mapping**: (In Development) Interactive UI to map PDF fields to data columns.
+It’s not just a parser—it’s a learning engine. If it gets something wrong, you correct it once, and it prevents that mistake forever.
 
 ---
 
-## Feature Highlights
-- **Automated Email Processing** — Ingests invoices directly from email attachments using a dedicated webhook endpoint.
-- **Smart Extraction Engine Dual-Core** — `src/services/extractionService.js` powers the extraction with two strategies:
-  1.  **Coordinate Learning (Primary):** Learns the exact X,Y coordinates of fields after a user manually corrects an invoice. Subsequent uploads are 100% accurate.
-  2.  **Heuristic Search (Fallback):** For first-time vendors, it uses smart Keyword Proximity (e.g., finding text near "Total:") to guess values.
-- **Self-Healing Data** — Automatically cleans dirty data (e.g., "$1,200" -> "1200", "Inv#123" -> "123") and standardizes dates to `DD-MM-YYYY`.
-- **Google Sheets Integration** — `src/services/sheetsService.js` provides seamless authentication and row appending to user spreadsheets.
-- **Vendor Management** — `src/models/VendorMap.js` stores learned layouts for each vendor.
-- **Modern UI** — Built with **React** and **TailwindCSS** for a clean, responsive user experience.
+## Why PDF2Sheet?
+
+### It Learns From You
+Most tools break when layouts change. PDF2Sheet adapts.
+*   **First time:** It guesses the values (Invoice #, Date, Amount) using smart heuristics.
+*   **Review:** If it missed something, you simply click the correct value on the PDF.
+*   **Forever after:** It remembers *exactly* where that vendor puts their data. Next time, it's automatic.
+
+### Email-First Identity
+We know that `billing@company.com` is always the same vendor, even if they change their invoice layout or name.
+*   **Smart Detection:** We prioritize the **Sender Email**.
+*   **No Duplicates:** The system automatically links invoices from the same email to the same vendor profile, keeping your data clean.
+
+### Your Data, Your Sheet
+No locked-in dashboards. All your data syncs instantly to your own Google Sheet. Use your existing financial models, pivot tables, and formulas.
+
+---
+
+## Features at a Glance
+
+*   **Auto-Pilot Mode:** Once a vendor is learned, their emails are processed and synced without you lifting a finger.
+*   **Human-in-the-Loop:** Low-confidence scans pause for your review. You're always in control.
+*   **Precision Extraction:** We don't just "OCR" the whole page. We find the specific pixels where the data lives.
+*   **Data Cleaning:** Automagically fixes common issues like `$1,200.00` vs `1200` or weird date formats.
 
 ---
 
 ## Tech Stack
 
-**Front-End:**
+Built with love using the **MERN Stack**:
 <p>
   <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="react" />
-  <img src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="vite" />
-  <img src="https://img.shields.io/badge/TailwindCSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="tailwindcss" />
-  <img src="https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black" alt="javascript" />
-</p>
-
-**Back-End & Core:**
-<p>
   <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="node.js" />
-  <img src="https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white" alt="express" />
   <img src="https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="mongodb" />
-  <img src="https://img.shields.io/badge/Google%20Sheets%20API-34A853?style=for-the-badge&logo=googlesheets&logoColor=white" alt="google sheets" />
-  <img src="https://img.shields.io/badge/PDF%20Parse-B31B1B?style=for-the-badge&logo=adobeacrobatreader&logoColor=white" alt="pdf parse" />
+  <img src="https://img.shields.io/badge/Google%20Sheets-34A853?style=for-the-badge&logo=googlesheets&logoColor=white" alt="google sheets" />
 </p>
-
----
-
-## Project Structure
-
-```
-src/ (Backend)
- ├─ config/                  # Database and API configurations
- ├─ controllers/             # Request handlers (Email, Invoices, Vendors)
- ├─ middleware/              # Auth and error handling mechanisms
- ├─ models/                  # Mongoose schemas (User, Invoice, VendorMap)
- ├─ routes/                  # API route definitions
- ├─ services/                # Business logic services (Sheets, etc.)
- └─ utils/                   # Helper functions (Extraction, PDF parsing)
-
-src/ (Frontend)
- ├─ active/                  # Active development components
- ├─ components/              # Reusable UI components
- │   ├─ layout/              # Sidebar, Header, Layout wrappers
- │   ├─ vendors/             # Vendor management modals and forms
- │   └─ mapping/             # PDF preview and mapping tools (In Dev)
- ├─ hooks/                   # Custom React hooks (useVendors, useUser)
- ├─ pages/                   # Main application views (Dashboard, Login)
- └─ assets/                  # Static images and icons
-```
 
 ---
 
 ## Getting Started
 
-1. **Install dependencies** (Root, Backend, and Frontend)
-   ```bash
-   npm install
-   cd backend && npm install
-   cd ../frontend && npm install
-   ```
+1.  **Install dependencies**
+    ```bash
+    npm install
+    cd backend && npm install
+    cd ../frontend && npm install
+    ```
 
-2. **Configure Environment**
-   Create `.env` files in both `backend/` and `frontend/` with your API keys and database URI.
 
-3. **Start the Development Servers**
-   In one terminal (Backend):
-   ```bash
-   cd backend
-   npm run start
-   ```
-   In another terminal (Frontend):
-   ```bash
-   cd frontend
-   npm run dev
-   ```
+2.  **Configuration**
+    Create a `.env` file in `backend/` with the following:
+    ```env
+    PORT=5000
+    MONGODB_URI=your_mongodb_connection_string
+    JWT_SECRET=your_secret_key
+    FRONTEND_URL=http://localhost:5173
+    ```
 
-4. **Access the App**
-   Visit `http://localhost:5173` to view the application.
+    *(Optional)* Create a `.env` in `frontend/` if you need custom API URLs:
+    ```env
+    VITE_API_URL=http://localhost:5000/api
+    ```
 
----
+3.  **Run it!**
+    *   Backend: `npm run start` (Port 5000)
+    *   Frontend: `npm run dev` (Port 5173)
 
-## Available Scripts
-
-### Backend
-- `npm run start` — Launch the backend API server.
-- `npm run dev` — Launch with nodemon for auto-reloading.
-
-### Frontend
-- `npm run dev` — Launch the React development server.
-- `npm run build` — Compile the frontend for production.
-- `npm run lint` — Run ESLint checks.
+4.  **Visit:** `http://localhost:5173`
 
 ---
+
+*Built for efficiency.*

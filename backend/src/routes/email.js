@@ -55,17 +55,55 @@ router.post('/test-upload', authenticateToken, upload.single('invoice'), async (
         }
 
         console.log('Searching for vendor with query:', query);
-        const vendor = await VendorMap.findOne(query).lean();
+        let vendor = await VendorMap.findOne(query).lean();
+
+        let extractedData = {};
+        let confidence = 0;
+        let fullText = "";
+
+        if (vendor) {
+            console.log(`[Identity] Found vendor via Email/Name: ${vendor.vendorName}`);
+            const extraction = await extractData(pdfBuffer, vendor.extractionRules);
+            extractedData = extraction.results;
+            fullText = extraction.fullText || "";
+            confidence = calculateConfidence(extractedData, vendor.extractionRules);
+
+            console.log(`[Identity] Extraction Confidence: ${confidence}%`);
+
+            console.log(`[Identity] Verifying vendor identity in document text...`);
+
+            const isVendorInText = fullText.toLowerCase().includes(vendor.vendorName.toLowerCase());
+
+            if (!isVendorInText) {
+                console.log(`[Identity] NOTE: Vendor "${vendor.vendorName}" NOT explicitly found in document text.`);
+                console.log(`[Identity] However, we found a direct match via Email/Name in DB. Trusting DB Record.`);
+
+                // PREVIOUSLY: We would invalidate the vendor here. 
+                // NOW: We trust the match.
+
+                // Optional: We could score confidence slightly lower, but we keep the vendor linkage.
+            } else {
+                console.log(`[Identity] Confirmed: Vendor "${vendor.vendorName}" found in text.`);
+                confidence = Math.min(confidence + 10, 100); // Boost confidence if name is in text
+            }
+        }
 
         if (!vendor) {
-            console.log('Vendor not found. Creating "Review Needed" invoice.');
+            console.log('Vendor not found (or rejected by Sanity Check). Creating "Review Needed" invoice.');
 
             let guessedVendorName = null;
             let heuristicData = {};
 
             try {
-                const { results, fullText } = await extractData(pdfBuffer, []);
-                heuristicData = results;
+                if (!fullText) {
+                    const { results, fullText: ft } = await extractData(pdfBuffer, []);
+                    heuristicData = results;
+                    fullText = ft;
+                } else {
+                    const { results } = await extractData(pdfBuffer, []);
+                    heuristicData = results;
+                }
+
                 console.log('Heuristic Extraction Result:', JSON.stringify(heuristicData, null, 2));
 
                 const allVendors = await VendorMap.find({ userId: req.user.userId }).select('vendorName');
@@ -106,13 +144,9 @@ router.post('/test-upload', authenticateToken, upload.single('invoice'), async (
             });
         }
 
-        const { results: extractedData } = await extractData(pdfBuffer, vendor.extractionRules);
-
-        const confidence = calculateConfidence(extractedData, vendor.extractionRules);
-
         const invoice = await Invoice.create({
             userId: req.user.userId,
-            vendorId: vendor._id,
+            vendorMapId: vendor._id,
             vendorName: vendor.vendorName,
             senderEmail: vendor.senderEmail || vendorEmail,
             extractedData,

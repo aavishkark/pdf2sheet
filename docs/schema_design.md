@@ -1,7 +1,7 @@
 # Database Schema Design
 
 ## Why NoSQL?
-I chose MongoDB because invoice data is naturally unstructured. One vendor might have a "Tax ID" field, another might not. Trying to force this into a SQL table with rigid columns would have been a nightmare of `ALTER TABLE` commands. With Mongo, I just store the extracting rules as a JSON object.
+I chose MongoDB because invoice data is naturally unstructured. One vendor might have a "Tax ID" field, another might not. Trying to force this into a SQL table with rigid columns would have been massive headache. With Mongo, I just store the extracting rules as a JSON object inside the Vendor document.
 
 ## Collections
 
@@ -15,7 +15,7 @@ This is pretty standard. It holds the login info and the tokens we need to talk 
   "email": "john@test.com",
   "password": "...", // Hashed with bcrypt (I never store plain text!)
   
-  // Here is where the magic happens
+  // Here is where the integration lives
   "googleTokens": {
     "access_token": "...",
     "refresh_token": "..." // This is the key to offline access
@@ -39,36 +39,39 @@ This is the heart of the system. It connects a specific email sender to a set of
   
   // Detection Logic
   "senderEmail": "billing@acmecorp.com", 
-  "senderDomain": "acmecorp.com",
-
-  // How to read their PDF
-  "fieldMappings": {
-    "invoiceNumber": { 
-        "extractionRule": "Invoice #(\\d+)",  // Regex pattern
-        "sheetColumn": "A"
-    },
-    "totalAmount": { 
-        "keywords": ["Balance Due", "Total"],
-        "sheetColumn": "D"
+  
+  // The Learning Engine
+  // We store a list of rules for each field (Total, Date, etc)
+  "extractionRules": [
+    {
+        "targetField": "totalAmount",
+        "method": "coordinate", // 'coordinate' (learned) or 'keyword_proximity' (heuristic)
+        "coordinates": {
+            "x": 100.5,
+            "y": 200.2,
+            "width": 50,
+            "height": 20
+        },
+        "confidence": 0.95
     }
-  },
+  ],
 
-  "confidence": {
-    "successRate": 95, // We track how often this works
-    "totalProcessed": 42
-  }
+  "confidenceThreshold": 80,
+  "active": true
 }
 ```
 
 ### 3. `invoices`
-A log of everything we've processed. Useful for history and debugging.
+A log of everything we have processed. Useful for history and debugging.
 
 ```javascript
 {
   "_id": ObjectId("..."),
   "userId": ObjectId("..."),
-  "vendorName": "ACME Corp",
-  "status": "processed", // or "review_needed"
+  "vendorName": "ACME Corp", 
+  "senderEmail": "billing@acmecorp.com",
+  
+  "status": "processed", // 'processed', 'review_needed', 'draft'
   
   "extractedData": {
     "invoiceNumber": "INV-2024-001",
@@ -77,7 +80,11 @@ A log of everything we've processed. Useful for history and debugging.
   },
   
   "confidenceScore": 100, // 0 to 100
-  "processedAt": ISODate("2026-01-24T...")
+  "processedAt": ISODate("2026-01-24T..."),
+  
+  // We keep the original file if we can, 
+  // though typically we offload this to S3 (future) or just keep the buffer for short term
+  "originalFileName": "invoice.pdf" 
 }
 ```
 

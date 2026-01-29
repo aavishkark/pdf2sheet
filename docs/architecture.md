@@ -5,23 +5,6 @@ This document breaks down how I built PDF2Sheet Auto. The goal was to keep thing
 
 Here is how the pieces fit together.
 
-## High-Level Diagram
-
-```mermaid
-graph TD
-    User[User] -->|Upload/Email| Backend[Node.js Backend]
-    Backend -->|1. Parse PDF| PDFLib[pdf-parse]
-    Backend -->|2. Check Vendor| Mongo[(MongoDB)]
-    Backend -->|3. Extract Data| Logic[Extraction Logic]
-    
-    Logic -->|Confidence Check| Decision{Good Match?}
-    
-    Decision -->|Yes (>= 70%)| Sheets[Google Sheets API]
-    Decision -->|No| Review[Flag for Review]
-    
-    Dashboard[React Frontend] -->|Manage Settings| Backend
-```
-
 ## Core Components
 
 ### 1. The Backend (Node.js & Express)
@@ -45,20 +28,19 @@ This was the trickiest part.
 
 ## Data Flow: How a PDF becomes a Row
 
-1.  **Input:** The system gets a PDF (via the upload endpoint).
-2.  **Identification:** I look at the `senderEmail` or the `vendorName`.
-3.  **The Matching Logic:**
-    -   I search the database: *Do we know this sender?*
-    -   If yes, I pull their "Extraction Rules" (e.g., look for "Total:" vs "Balance Due:").
-4.  **Extraction:**
-    -   I convert the PDF to raw text.
-    -   I run specific Regex patterns against that text.
-5.  **Validation:**
-    -   I calculate a "Confidence Score". If I found the Date, Invoice #, and Amount, that's a 100% score.
-    -   If the score is high enough, I push it to Google Sheets immediately.
-    -   If not, I save it as "Draft" for the user to fix in the dashboard.
+1.  **Input:** The system gets a PDF (via the upload endpoint or email webhook).
+2.  **Identity Resolution (The "Email First" Logic):**
+    -   We check the **Sender Email** first. If `billing@acme.com` is in our database, we know it is ACME Corp, regardless of what the invoice says. Use the email as the source of truth.
+    -   If the email is new, we fallback to searching for the Vendor Name in the PDF text.
+3.  **Extraction (The "Dual-Core" Engine):**
+    -   **Strategy A (Coordinate Learning):** If we have learned this vendor before, we look at the specific X/Y pixel coordinates. This is 100% accurate.
+    -   **Strategy B (Heuristics):** If it is a new vendor, we scan the text for keywords like "Total", "Balance Due", and "Invoice Date" to make an educated guess.
+4.  **Validation:**
+    -   We calculate a "Confidence Score". If I found the Date, Invoice #, and Amount, that is a high score.
+    -   If the score is high enough (>= 80%), I push it to Google Sheets immediately.
+    -   If not, I save it as "Review Needed" for the user to fix in the dashboard.
 
 ## Why this Stack?
--   **MERN (Mongo, Express, React, Node):** It's efficient. I can use JavaScript on both frontend and backend, which speeded up development.
+-   **MERN (Mongo, Express, React, Node):** It is efficient. I can use JavaScript on both frontend and backend, which speeded up development.
 -   **Tailwind CSS:** I wanted the dashboard to look modern without writing 500 lines of custom CSS.
--   **Regex for Parsing:** It's rudimentary but reliable for structured business documents like invoices.
+-   **Regex for Parsing:** It is rudimentary but reliable for structured business documents like invoices.

@@ -162,7 +162,7 @@ export default function Dashboard() {
                         <table className="w-full">
                             <thead className={darkMode ? 'bg-gray-900 border-b border-gray-700' : 'bg-gray-50 border-b border-gray-200'}>
                                 <tr>
-                                    <th className={`px-6 py-4 text-left text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Vendor</th>
+                                    <th className={`px-6 py-4 text-left text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Sender Email</th>
                                     <th className={`px-6 py-4 text-left text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Invoice #</th>
                                     <th className={`px-6 py-4 text-left text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Date</th>
                                     <th className={`px-6 py-4 text-left text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Due Date</th>
@@ -176,7 +176,10 @@ export default function Dashboard() {
                                 {invoices.map((invoice) => (
                                     <tr key={invoice._id} className={`${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} transition`}>
                                         <td className={`px-6 py-4 whitespace-nowrap ${darkMode ? 'text-white' : 'text-gray-900'} font-medium`}>
-                                            {invoice.vendorName || 'Unknown Vendor'}
+                                            <div className="flex flex-col">
+                                                <span>{invoice.senderEmail || 'No Email'}</span>
+                                                {invoice.vendorName && <span className="text-xs text-gray-500">{invoice.vendorName}</span>}
+                                            </div>
                                         </td>
                                         <td className={`px-6 py-4 whitespace-nowrap ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                                             {invoice.extractedData?.invoiceNumber || 'N/A'}

@@ -170,7 +170,16 @@ export const processAndLearn = async (req, res) => {
 
                 if (safeEmail) {
                     vendorMap = await VendorMap.findOne({ senderEmail: safeEmail, userId });
-                    console.log(`[DEBUG-LOOKUP] Search by Email Result:`, vendorMap ? `FOUND (${vendorMap._id})` : 'NOT FOUND');
+
+                    if (vendorMap) {
+                        console.log(`[DEBUG-LOOKUP] Search by Email Result: FOUND (${vendorMap._id}) - Name: "${vendorMap.vendorName}"`);
+
+                        // User Request: If email matches, assume it IS the same vendor.
+                        // We do NOT check for name mismatch or unlink anymore.
+                        // We trust the email identity.
+                    } else {
+                        console.log(`[DEBUG-LOOKUP] Search by Email Result: NOT FOUND`);
+                    }
                 }
 
                 if (!vendorMap && safeVendorName) {

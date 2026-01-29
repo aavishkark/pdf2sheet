@@ -1,7 +1,7 @@
 # API Documentation
 
 ## Introduction
-This is the backend API for PDF2Sheet Auto. It handles everything from user login to the heavy lifting of parsing PDFs. I built it using Express.js because it's fast and I know it well.
+This is the backend API for PDF2Sheet Auto. It handles everything from user login to the heavy lifting of parsing PDFs. I built it using Express.js because it is fast and I know it well.
 
 **Base URL:** `http://localhost:5000/api`
 
@@ -27,20 +27,19 @@ Logs you in.
 This is where we teach the system how to read invoices.
 
 ### `GET /vendors`
-Gets a list of all vendors you've added.
+Gets a list of all vendors you have added.
 - **Query Params:** None
 - **Response:** Array of vendor objects.
 
 ### `POST /vendors`
-Adds a new vendor mapping.
+Adds a new vendor mapping manually (though usually the system learns this automatically).
 - **Body:**
   ```json
   {
     "vendorName": "ACME Corp",
-    "senderEmail": "billing@acmecorp.com", // Optional, can match by name too
+    "senderEmail": "billing@acmecorp.com",
     "fieldMappings": {
-      "invoiceNumber": { "extractionRule": "Invoice #(\\d+)" },
-      "totalAmount": { "keywords": ["Total", "Balance Due"] }
+      "invoiceNumber": { "extractionRule": "Invoice #(\\d+)" }
     }
   }
   ```
@@ -48,7 +47,7 @@ Adds a new vendor mapping.
 ---
 
 ## 3. Google Sheets Connection
-These endpoints handle the OAuth dance with Google.
+These endpoints handle the OAuth handshake with Google.
 
 ### `GET /sheets/auth-url`
 Gives you the Google URL to redirect the user to.
@@ -63,14 +62,14 @@ Use this if the connection gets messed up. It wipes the tokens from the database
 This is what I used to test the whole flow without setting up a real email server.
 
 ### `POST /email/test-upload`
-Simulates receiving an invoice via email.
+Simulates receiving an invoice via email. This is the core engine of the app.
 - **Type:** `multipart/form-data`
 - **Fields:**
     - `invoice`: The PDF file (Binary).
     - `vendorName`: "ACME Corp" (Optional, helps if email matching fails).
-    - `vendorEmail`: "billing@acme.com" (Optional).
+    - `vendorEmail`: "billing@acme.com" (The simulated sender).
 - **What it does:**
     1.  Reads the PDF.
-    2.  Finds the vendor in the specific user's account.
-    3.  Extracts data (Date, Total, Invoice #).
-    4.  If it's confident (>70%), it **appends a row to Google Sheets**.
+    2.  Finds the vendor by Email first, then by Name.
+    3.  Extracts data (Date, Total, Invoice #) using learned coordinates.
+    4.  If it is confident (>80%), it **appends a row to Google Sheets**.

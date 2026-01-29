@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import api from '../../services/api';
 
 export default function ReviewInvoiceModal({ invoice, isOpen, onClose, onUpdate }) {
     const [formData, setFormData] = useState({
@@ -28,16 +29,18 @@ export default function ReviewInvoiceModal({ invoice, isOpen, onClose, onUpdate 
         setIsSubmitting(true);
 
         try {
-            await onUpdate(invoice._id, {
+            await api.post(`/invoices/${invoice._id}/process`, {
                 extractedData: {
                     invoiceNumber: formData.invoiceNumber,
                     invoiceDate: formData.date,
                     totalAmount: formData.total
                 },
-                vendorName: formData.vendorName,
-                status: 'processed' // Auto-approve
+                vendorName: formData.vendorName
             });
+
             toast.success('Invoice approved and syncing to Sheets!');
+
+            if (onUpdate) onUpdate(invoice._id, { status: 'processed' });
             onClose();
         } catch (error) {
             console.error(error);
