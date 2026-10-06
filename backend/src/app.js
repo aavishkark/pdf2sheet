@@ -69,8 +69,23 @@ app.use('/api/invoices', invoiceRoutes);
 app.use('/api/sheets', sheetsRoutes);
 app.use('/api/user', userRoutes);
 
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 app.use(notFound);
 
 app.use(errorHandler);
+
+// Serve frontend static files in production
+if (process.env.NODE_ENV === 'production') {
+    app.use(express.static(path.join(__dirname, '../../frontend/dist')));
+
+    app.get('*', (req, res) => {
+        res.sendFile(path.resolve(__dirname, '../../frontend/dist', 'index.html'));
+    });
+}
 
 export default app;
