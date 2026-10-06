@@ -23,8 +23,12 @@ app.use(helmet());
 const allowedOrigins = [
     'http://localhost:5173',
     'http://localhost:5174',
+    // Current frontend on Vercel — remove once you move to Render
     'https://pdf2sheet.vercel.app',
+    // Future frontend on Render
+    'https://pdf2sheet-frontend.onrender.com',
     'https://pdf2sheet-z3ll.onrender.com',
+    // FRONTEND_URL env var lets you override without redeploying
     process.env.FRONTEND_URL
 ].filter(Boolean);
 
