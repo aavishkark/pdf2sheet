@@ -3,6 +3,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 import authRoutes from './routes/auth.js';
 import vendorRoutes from './routes/vendors.js';
@@ -16,18 +18,20 @@ import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 
-app.use(helmet());
+app.use(helmet({
+    contentSecurityPolicy: false, // Allows the React frontend to load assets normally
+}));
 
 const allowedOrigins = [
     'http://localhost:5173',
     'http://localhost:5174',
-    // Current frontend on Vercel — remove once you move to Render
+    // Current frontend on Vercel
     'https://pdf2sheet.vercel.app',
-    // Future frontend on Render
-    'https://pdf2sheet-frontend.onrender.com',
-    'https://pdf2sheet-z3ll.onrender.com',
     // FRONTEND_URL env var lets you override without redeploying
     process.env.FRONTEND_URL
 ].filter(Boolean);
@@ -61,6 +65,7 @@ app.get('/health', (req, res) => {
     });
 });
 
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/vendors', vendorRoutes);
 app.use('/api/process', processRoutes);
@@ -68,16 +73,6 @@ app.use('/api/email', emailRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/sheets', sheetsRoutes);
 app.use('/api/user', userRoutes);
-
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-app.use(notFound);
-
-app.use(errorHandler);
 
 // Serve frontend static files in production
 if (process.env.NODE_ENV === 'production') {
@@ -87,5 +82,9 @@ if (process.env.NODE_ENV === 'production') {
         res.sendFile(path.resolve(__dirname, '../../frontend/dist', 'index.html'));
     });
 }
+
+// Error handling MUST be the last middleware
+app.use(notFound);
+app.use(errorHandler);
 
 export default app;
